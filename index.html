@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Converter - Simple & Fast</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tab-active { border-bottom: 4px solid #10b981; color: #10b981; font-weight: bold; }
+        .list-box { height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+        .list-item { padding: 8px 12px; cursor: pointer; transition: 0.2s; }
+        .list-item:hover { background: #f3f4f6; }
+        .list-item.selected { background: #10b981; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-10 font-sans">
+
+    <div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+        <div class="bg-emerald-600 p-6 text-white text-center">
+            <h1 class="text-3xl font-extrabold">Unit Converter <span class="text-emerald-200">Express</span></h1>
+            <p class="text-sm opacity-90">Simple. Fast. Accurate.</p>
+        </div>
+
+        <div class="flex flex-wrap border-b bg-gray-50" id="tabs">
+            <button onclick="changeCategory('length')" class="flex-1 py-4 text-sm uppercase tracking-wider tab-active" id="tab-length">Length</button>
+            <button onclick="changeCategory('weight')" class="flex-1 py-4 text-sm uppercase tracking-wider text-gray-500 hover:text-emerald-600" id="tab-weight">Weight</button>
+            <button onclick="changeCategory('temp')" class="flex-1 py-4 text-sm uppercase tracking-wider text-gray-500 hover:text-emerald-600" id="tab-temp">Temperature</button>
+            <button onclick="changeCategory('area')" class="flex-1 py-4 text-sm uppercase tracking-wider text-gray-500 hover:text-emerald-600" id="tab-area">Area</button>
+        </div>
+
+        <div class="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-4">
+                <label class="block text-lg font-bold text-gray-700">From:</label>
+                <input type="number" id="inputVal" oninput="calculate()" placeholder="Enter value..." 
+                    class="w-full p-4 text-2xl border-2 border-gray-200 rounded-xl focus:border-emerald-500 outline-none transition-all">
+                <div id="fromList" class="list-box bg-white">
+                    </div>
+            </div>
+
+            <div class="space-y-4">
+                <label class="block text-lg font-bold text-gray-700">To:</label>
+                <div id="resultDisplay" class="w-full p-4 text-2xl font-bold bg-emerald-50 text-emerald-700 border-2 border-emerald-100 rounded-xl min-h-[68px]">0</div>
+                <div id="toList" class="list-box bg-white">
+                    </div>
+            </div>
+        </div>
+
+        <div class="bg-emerald-50 p-6 mt-4 border-t border-emerald-100">
+            <h3 class="text-emerald-800 font-bold mb-3">Quick Find Units</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="e.g. Kilogram" class="p-3 rounded-lg border border-emerald-200 outline-none focus:ring-2 focus:ring-emerald-400">
+                <input type="text" placeholder="e.g. Pound" class="p-3 rounded-lg border border-emerald-200 outline-none focus:ring-2 focus:ring-emerald-400">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const unitData = {
+            length: { meter: 1, kilometer: 1000, centimeter: 0.01, millimeter: 0.001, mile: 1609.34, foot: 0.3048, inch: 0.0254 },
+            weight: { kilogram: 1, gram: 0.001, pound: 0.4535, ounce: 0.0283, metric_ton: 1000 },
+            temp: { celsius: 'C', fahrenheit: 'F', kelvin: 'K' },
+            area: { square_meter: 1, square_km: 1000000, acre: 4046.86, hectare: 10000 }
+        };
+
+        let currentCategory = 'length';
+        let selectedFrom = '';
+        let selectedTo = '';
+
+        function changeCategory(cat) {
+            currentCategory = cat;
+            // Update UI Tabs
+            document.querySelectorAll('#tabs button').forEach(btn => btn.classList.remove('tab-active', 'text-emerald-600'));
+            document.getElementById('tab-' + cat).classList.add('tab-active');
+            
+            renderLists();
+        }
+
+        function renderLists() {
+            const units = Object.keys(unitData[currentCategory]);
+            selectedFrom = units[0];
+            selectedTo = units[1] || units[0];
+            
+            updateListView('fromList', units, 'selectedFrom');
+            updateListView('toList', units, 'selectedTo');
+            calculate();
+        }
+
+        function updateListView(elementId, units, globalVarName) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = units.map(unit => `
+                <div class="list-item ${window[globalVarName] === unit ? 'selected' : ''}" 
+                     onclick="selectUnit('${elementId}', '${unit}', '${globalVarName}')">
+                    ${unit.replace('_', ' ').toUpperCase()}
+                </div>
+            `).join('');
+        }
+
+        function selectUnit(elementId, unit, globalVarName) {
+            window[globalVarName] = unit;
+            const units = Object.keys(unitData[currentCategory]);
+            updateListView(elementId, units, globalVarName);
+            calculate();
+        }
+
+        function calculate() {
+            const val = parseFloat(document.getElementById('inputVal').value);
+            const display = document.getElementById('resultDisplay');
+            if (isNaN(val)) { display.innerText = "0"; return; }
+
+            let result;
+            if (currentCategory === 'temp') {
+                let c;
+                if (selectedFrom === 'celsius') c = val;
+                else if (selectedFrom === 'fahrenheit') c = (val - 32) * 5/9;
+                else c = val - 273.15;
+
+                if (selectedTo === 'celsius') result = c;
+                else if (selectedTo === 'fahrenheit') result = (c * 9/5) + 32;
+                else result = c + 273.15;
+            } else {
+                const base = val * unitData[currentCategory][selectedFrom];
+                result = base / unitData[currentCategory][selectedTo];
+            }
+            display.innerText = result.toLocaleString(undefined, {maximumFractionDigits: 5});
+        }
+
+        // Init
+        renderLists();
+    </script>
+</body>
+</html>
